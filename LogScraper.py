@@ -1,4 +1,5 @@
 import parserUI
+import keywordsJson
 import tkFileDialog
 from Tkinter import *
 import json
@@ -7,127 +8,38 @@ import os
 
 
 class parser():
-    keywords = {
-        "Project": {
-            "GM MY18": {
-                "Precheck": {
-                    "Build Version": {
-                        "search": "Version: GM_Info30_MY18.*?';",
-                        "start": "Version: ",
-                        "end": "';",
-                    },
-                    "Navigation Data": {
-                        "search": "NavData Version:.*?';",
-                        "start": "version_name=",
-                        "end": " supported_nat_builds",
-                    },
-                    "Navidata Path": {
-                        "search": "system_navi_data_path.*?' system",
-                        "start": "system_navi_data_path='",
-                        "end": "' system",
-                    },
-                    # "J5": {
-                    #     "start" : "",
-                    #     "end" : "",
-                    # },
-                    # "J6": {
-                    #     "start": "",
-                    #     "end": "",
-                    # },
-                    "Connected Phone Count": {
-                        "search": "instance='DCC_PHO_DEV_LIST' event=NUANCE_ASR_DYNAMICCONTENTCONSUMEREVENT_DCC_WITH_N_ENTRIES message='.*?';",
-                        "start": "message='",
-                        "end": "';",
-                    },
-                    "Media Song Count": {
-                        "search": "instance='DCC_MEDIA_iphone-id' event=NUANCE_ASR_DYNAMICCONTENTCONSUMEREVENT_DCC_WITH_N_ENTRIES message='.*?';",
-                        "start": "message='",
-                        "end": "';",
-                    },
-                },
-                "System Features": {
-                    "search": "system_feature_list={",
-                    "list":{
-                        "SYSTEM_FEATURE_BT_MUSIC": False,
-                        "SYSTEM_FEATURE_BT_PHONE": False,
-                        "SYSTEM_FEATURE_DAB": False,
-                        "SYSTEM_FEATURE_HD": False,
-                        "SYSTEM_FEATURE_INTERNET": False,
-                        "SYSTEM_FEATURE_NAVI": False,
-                        "SYSTEM_FEATURE_ONSTAR": False,
-                        "SYSTEM_FEATURE_USB": False,
-                        "SYSTEM_FEATURE_XM": False,
-                    },
-                },
-                "Event": {
-                    "PHONE_DEVICE_CHANGED": False,
-                    "PHONE_DEVICE_PB_CHANGED": False,
-                    "MEDIA_DEVICE_CHANGED": False,
-                    "MEDIA_DATA_CHANGED": False,
-                    "FM_STATIONS_NEED_UPDATE": False,
-                    "DAB_STATIONS_NEED_UPDATE": False,
-                    "XM_STATIONS_NEED_UPDATE": False,
-                    "NLU_EMBEDDED_ACTIVATE": False,
-                    "NAVI_CARD_MOUNT": False,
-                },
-                "OffboardConnection": "HttpRequest",
-            },
-            "GM 19": {
-                "System Features": {
-                    "search": "system_feature_list",
-                    "start": "system_feature_list={",
-                    "end": "}",
-                    # "SYSTEM_FEATURE_APPS"
-                    # "SYSTEM_FEATURE_AUDIO"
-                    # "SYSTEM_FEATURE_BT_MUSIC"
-                    # "SYSTEM_FEATURE_BT_PHONE"
-                    # "SYSTEM_FEATURE_HD"
-                    # "SYSTEM_FEATURE_INTERNET"
-                    # "SYSTEM_FEATURE_NAVI"
-                    # "SYSTEM_FEATURE_ONSTAR"
-                    # "SYSTEM_FEATURE_PHONE"
-                    # "SYSTEM_FEATURE_USB"
-                    # "SYSTEM_FEATURE_XM"
-                },
-            },
-            "CIP": {
-
-            },
-        },
-    }
 
     MYDATA = []
 
-    def initializejson(self):
-        json_string = json.dumps(self.keywords)
-        self.keywords = json.loads(json_string)
-
-    def searchInitialInfo(self, project_name):
+    def searchInitialInfo(self, project_name, my_json):
         # The block below needs more comments...but for now leave it
         for line in self.MYDATA:
-            for i in self.keywords["Project"][project_name]["Precheck"]:
-                regexp = re.compile(self.keywords["Project"][project_name]["Precheck"][i]['search'])
+            for i in my_json["Project"][project_name]["Precheck"]:
+                regexp = re.compile(my_json["Project"][project_name]["Precheck"][i]['search'])
                 if regexp.search(line):
-                    start = self.keywords["Project"][project_name]["Precheck"][i]['start']
-                    end = self.keywords["Project"][project_name]["Precheck"][i]['end']
+                    start = my_json["Project"][project_name]["Precheck"][i]['start']
+                    end = my_json["Project"][project_name]["Precheck"][i]['end']
                     foo = re.search((start + "(.*)" + end), line)
-                    if 'result' not in self.keywords["Project"][project_name]["Precheck"][i]:
-                        self.keywords["Project"][project_name]["Precheck"][i]["result"] = foo.group(1)
+                    if 'result' not in my_json["Project"][project_name]["Precheck"][i]:
+                        my_json["Project"][project_name]["Precheck"][i]["result"] = foo.group(1)
+        return my_json
 
-    def searchSystemFeature(self,project_name):
+    def searchSystemFeature(self,project_name, my_json):
         for line in self.MYDATA:
-            if str(self.keywords["Project"][project_name]["System Features"]["search"]) in line:
-                for i in self.keywords["Project"][project_name]["System Features"]["list"]:
+            if str(my_json["Project"][project_name]["System Features"]["search"]) in line:
+                for i in my_json["Project"][project_name]["System Features"]["list"]:
                     if i in line:
-                        self.keywords["Project"][project_name]["System Features"]["list"][i]=True
+                        my_json["Project"][project_name]["System Features"]["list"][i]=True
+        return my_json
 
 
-    def searchEvent(self,project_name):
+    def searchEvent(self,project_name,my_json):
         for line in self.MYDATA:
-            for event in self.keywords["Project"][project_name]["Event"]:
+            for event in my_json["Project"][project_name]["Event"]:
                 if str(event) in line:
-                    self.keywords["Project"][project_name]["Event"][event]= True
+                    my_json["Project"][project_name]["Event"][event]= True
                     #print event
+        return my_json
 
     def split(self, mylist):
         # start with the first PTT
@@ -150,13 +62,13 @@ class parser():
 
     def processing(self):
         # Initialize Json
-        self.initializejson()
+        my_json_temp = keywordsJson.keywords().get()
 
         # Find related project
         project_name = self.searchProject()
 
         # Log precheck
-        self.searchInitialInfo(project_name)
+        json_modified = self.searchInitialInfo(project_name, my_json_temp)
 
         # Clear previous result
         # self.ui.cleartextbox()
@@ -164,24 +76,24 @@ class parser():
         """Precheck"""
         precheck_result = []
 
-        for i in self.keywords["Project"][project_name]["Precheck"]:
-            if 'result' in self.keywords["Project"][project_name]["Precheck"][i]:
-                precheck_result.append((i,self.keywords["Project"][project_name]["Precheck"][i]["result"]))
+        for i in json_modified["Project"][project_name]["Precheck"]:
+            if 'result' in json_modified["Project"][project_name]["Precheck"][i]:
+                precheck_result.append((i,json_modified["Project"][project_name]["Precheck"][i]["result"]))
                 # self.ui.uploadstringwithformat(i, self.keywords["Project"][project_name]["Precheck"][i]["result"])
         self.ui.updateprecheck(precheck_result)
 
         """System Features"""
-        self.searchSystemFeature(project_name)
+        json_modified = self.searchSystemFeature(project_name,json_modified)
         sf_result = []
-        for i in self.keywords["Project"][project_name]["System Features"]["list"]:
-            sf_result.append((i,str(self.keywords["Project"][project_name]["System Features"]["list"][i])))
+        for i in json_modified["Project"][project_name]["System Features"]["list"]:
+            sf_result.append((i,str(json_modified["Project"][project_name]["System Features"]["list"][i])))
         self.ui.updateSF(sf_result)
 
         """Event"""
-        self.searchEvent(project_name)
+        json_modified = self.searchEvent(project_name, json_modified)
         event_result = []
-        for i in self.keywords["Project"][project_name]["Event"]:
-            event_result.append((i, str(self.keywords["Project"][project_name]["Event"][i])))
+        for i in json_modified["Project"][project_name]["Event"]:
+            event_result.append((i, str(json_modified["Project"][project_name]["Event"][i])))
         self.ui.updateEvent(event_result)
 
         #
