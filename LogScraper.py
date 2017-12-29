@@ -11,34 +11,41 @@ class parser():
 
     MYDATA = []
 
-    def searchInitialInfo(self, project_name, my_json):
+    def searchInitialInfo(self, my_json):
         # The block below needs more comments...but for now leave it
         for line in self.MYDATA:
-            for i in my_json["Project"][project_name]["Precheck"]:
-                regexp = re.compile(my_json["Project"][project_name]["Precheck"][i]['search'])
+            for i in my_json["Precheck"]:
+                regexp = re.compile(my_json["Precheck"][i]['search'])
                 if regexp.search(line):
-                    start = my_json["Project"][project_name]["Precheck"][i]['start']
-                    end = my_json["Project"][project_name]["Precheck"][i]['end']
+                    start = my_json["Precheck"][i]['start']
+                    end = my_json["Precheck"][i]['end']
                     foo = re.search((start + "(.*)" + end), line)
-                    if 'result' not in my_json["Project"][project_name]["Precheck"][i]:
-                        my_json["Project"][project_name]["Precheck"][i]["result"] = foo.group(1)
+                    if 'result' not in my_json["Precheck"][i]:
+                        my_json["Precheck"][i]["result"] = foo.group(1)
         return my_json
 
-    def searchSystemFeature(self,project_name, my_json):
+    def searchSystemFeature(self, my_json):
         for line in self.MYDATA:
-            if str(my_json["Project"][project_name]["System Features"]["search"]) in line:
-                for i in my_json["Project"][project_name]["System Features"]["list"]:
+            if str(my_json["System Features"]["search"]) in line:
+                for i in my_json["System Features"]["list"]:
                     if i in line:
-                        my_json["Project"][project_name]["System Features"]["list"][i]=True
+                        my_json["System Features"]["list"][i]=True
         return my_json
 
 
-    def searchEvent(self,project_name,my_json):
+    def searchEvent(self,my_json):
         for line in self.MYDATA:
-            for event in my_json["Project"][project_name]["Event"]:
+            for event in my_json["Event"]:
                 if str(event) in line:
-                    my_json["Project"][project_name]["Event"][event]= True
+                    my_json["Event"][event]= True
                     #print event
+        return my_json
+
+    def searchOffboard(self,my_json):
+        for line in self.MYDATA:
+            for i in my_json["Offboard Connection"]:
+                if (i and str(my_json["Offboard Connection"][i]["search"])) in line:
+                    my_json["Offboard Connection"][i]["result"] = not my_json["Offboard Connection"][i]["result"]
         return my_json
 
     def split(self, mylist):
@@ -57,18 +64,22 @@ class parser():
 
     def searchProject(self):
         # Return string: project name
-        foo = "GM MY18"
+        foo = "GM_MY18"
         return foo
 
     def processing(self):
-        # Initialize Json
-        my_json_temp = keywordsJson.keywords().get()
-
         # Find related project
         project_name = self.searchProject()
+        self.ui.uploadprojectname(project_name)
+
+        # Initialize Json
+        if project_name == "GM_MY18":
+            my_json_temp = keywordsJson.keywords().getGM_MY18()
+        else:
+            my_json_temp = keywordsJson.keywords().getGM_MY18() # NEED TO CHANGE!!! LEAVE IT FOR NOW
 
         # Log precheck
-        json_modified = self.searchInitialInfo(project_name, my_json_temp)
+        json_modified = self.searchInitialInfo(my_json_temp)
 
         # Clear previous result
         # self.ui.cleartextbox()
@@ -76,29 +87,37 @@ class parser():
         """Precheck"""
         precheck_result = []
 
-        for i in json_modified["Project"][project_name]["Precheck"]:
-            if 'result' in json_modified["Project"][project_name]["Precheck"][i]:
-                precheck_result.append((i,json_modified["Project"][project_name]["Precheck"][i]["result"]))
-                # self.ui.uploadstringwithformat(i, self.keywords["Project"][project_name]["Precheck"][i]["result"])
+        for i in json_modified["Precheck"]:
+            if 'result' in json_modified["Precheck"][i]:
+                precheck_result.append((i,json_modified["Precheck"][i]["result"]))
         self.ui.updateprecheck(precheck_result)
 
         """System Features"""
-        json_modified = self.searchSystemFeature(project_name,json_modified)
+        json_modified = self.searchSystemFeature(json_modified)
         sf_result = []
-        for i in json_modified["Project"][project_name]["System Features"]["list"]:
-            sf_result.append((i,str(json_modified["Project"][project_name]["System Features"]["list"][i])))
+        for i in json_modified["System Features"]["list"]:
+            sf_result.append((i,str(json_modified["System Features"]["list"][i])))
         self.ui.updateSF(sf_result)
 
         """Event"""
-        json_modified = self.searchEvent(project_name, json_modified)
+        json_modified = self.searchEvent(json_modified)
         event_result = []
-        for i in json_modified["Project"][project_name]["Event"]:
-            event_result.append((i, str(json_modified["Project"][project_name]["Event"][i])))
+        for i in json_modified["Event"]:
+            event_result.append((i, str(json_modified["Event"][i])))
         self.ui.updateEvent(event_result)
 
-        #
-        # PTT_session = "There are(is) " + str(len(self.split(self.MYDATA))) + " PTT session(s)."
-        # self.ui.uploadstring(PTT_session)
+        """Offboard"""
+        json_modified = self.searchOffboard(json_modified)
+        offboard_result = []
+        OffboardEnable = True
+        for i in json_modified["Offboard Connection"]:
+            if not json_modified["Offboard Connection"][i]["result"]:
+                OffboardEnable = False
+            offboard_result.append((i, str(json_modified["Offboard Connection"][i]["result"])))
+        self.ui.updateOffboard(offboard_result, OffboardEnable)
+
+        PTT_session = "There are(is) " + str(len(self.split(self.MYDATA))) + " PTT session(s)."
+        self.ui.updatePTT(PTT_session)
 
         # Clear MYDATA array for the next file
         self.MYDATA = []

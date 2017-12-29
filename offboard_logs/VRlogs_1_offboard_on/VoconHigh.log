@@ -1,0 +1,2 @@
+01:18.916 ERROR:     [3024966528] nuance.common.File                       Can not open file /data/speechTEFiles/app_names.eco (mode=rb  [51]
+01:19.959 ERROR:     [3024969728] nuance.common.File                       Can not open file /data/speechTEFiles/mediadevice_list.cop (mode=rb  [51]
